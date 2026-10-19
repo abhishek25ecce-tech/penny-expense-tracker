@@ -1,0 +1,21 @@
+
+{
+  "id": "/",
+  "name": "Penny - Daily Expense Tracker",
+  "short_name": "Penny",
+  "description": "Your personal daily expense tracker",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f6f9",
+  "theme_color": "#101827",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
