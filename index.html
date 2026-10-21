@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,7 +9,7 @@
 
   <link rel="stylesheet" href="./style.css">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="./icons/icon-192.png" type="image/png">
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://apis.google.com/js/api.js" async defer></script>
@@ -50,6 +49,37 @@
           <span class="avatar">ME</span>
         </div>
       </header>
+
+<!-- Android / Chrome install -->
+<section id="installCard" class="content-card">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">YOUR EXPENSES, ONE TAP AWAY</div>
+      <h2>Install Penny</h2>
+      <p>Add Penny to your home screen for quick access.</p>
+    </div>
+  </div>
+  <button id="installPenny" class="btn-primary" type="button">
+    Install Penny
+  </button>
+</section>
+
+<!-- iPhone / iPad Safari instructions -->
+<section id="iosInstallNote" class="content-card" hidden>
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">QUICK ACCESS</div>
+      <h2>Add Penny to your Home Screen</h2>
+      <p>In Safari, tap Share, then choose
+        <strong>Add to Home Screen</strong>.
+      </p>
+    </div>
+  </div>
+  <p class="muted">
+    You only need to do this once. Penny will then appear
+    alongside your other apps.
+  </p>
+</section>
 
       <section id="googleConnect" class="content-card">
         <div class="section-head">
@@ -298,5 +328,6 @@
       });
     }
   </script>
+
 </body>
 </html>

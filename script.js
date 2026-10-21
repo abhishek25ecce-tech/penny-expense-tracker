@@ -1,4 +1,3 @@
-
 "use strict";
 
 const CLIENT_ID = "665583016463-9hc2hskgovfcht7t2p0aurqdfni5ut4i.apps.googleusercontent.com";
@@ -12,7 +11,7 @@ const money = value => new Intl.NumberFormat("en-IN", {
 }).format(Number(value) || 0);
 
 let expenses = [];
-let spreadsheetId = null;
+let spreadsheetId = localStorage.getItem("pennySpreadsheetId") || null;
 let tokenClient;
 let busy = false;
 
@@ -60,18 +59,21 @@ async function initialiseGoogle() {
       }
 
       gapi.client.setToken({ access_token: response.access_token });
+      const expiresIn = Math.max(60, Number(response.expires_in) || 3600);
+      sessionStorage.setItem("pennyAccessToken", response.access_token);
+      sessionStorage.setItem("pennyTokenExpiresAt", String(Date.now() + expiresIn * 1000 - 60000));
 
       try {
-        showStatus("Finding your personal expense sheet…");
-await findOrCreateSpreadsheet();
-
-$("googleConnect").hidden = true;
-$("connectionLabel").textContent = "Connected to your Google Sheet";
-$("connectionDot").style.background = "#36b78a";
-
-showStatus("Connected to your Google Sheet. Your expenses are ready.", "success");
-
-await loadExpenses();
+        showStatus("Opening your personal expense sheet…");
+        if (!spreadsheetId) {
+          await findOrCreateSpreadsheet();
+          localStorage.setItem("pennySpreadsheetId", spreadsheetId);
+        }
+        $("googleConnect").hidden = true;
+        $("connectionLabel").textContent = "Connected to your Google Sheet";
+        $("connectionDot").style.background = "#36b78a";
+        showStatus("Connected to your Google Sheet. Your expenses are ready.", "success");
+        await loadExpenses();
       } catch (error) {
         showStatus(error.message || "Could not set up your spreadsheet.", "error");
       }
@@ -85,7 +87,7 @@ async function connectGoogle() {
       showStatus("Loading Google sign-in…");
       await initialiseGoogle();
     }
-    tokenClient.requestAccessToken({ prompt: "consent" });
+    tokenClient.requestAccessToken({ prompt: "" });
   } catch (error) {
     showStatus(error.message, "error");
   }
@@ -375,4 +377,97 @@ $("expenseForm").addEventListener("reset", () => {
 
 $("date").value = localDate();
 render();
-showStatus("Connect Google to create your personal expense sheet.");
+
+async function restoreSameTabConnection() {
+  const token = sessionStorage.getItem("pennyAccessToken");
+  const expiresAt = Number(sessionStorage.getItem("pennyTokenExpiresAt") || 0);
+  if (token && expiresAt > Date.now() && spreadsheetId) {
+    try {
+      await initialiseGoogle();
+      gapi.client.setToken({ access_token: token });
+      $("googleConnect").hidden = true;
+      $("connectionLabel").textContent = "Connected to your Google Sheet";
+      $("connectionDot").style.background = "#36b78a";
+      showStatus("Restoring your Google Sheet…");
+      await loadExpenses();
+      showStatus("Your expenses are ready.", "success");
+      return;
+    } catch (error) {
+      sessionStorage.removeItem("pennyAccessToken");
+      sessionStorage.removeItem("pennyTokenExpiresAt");
+      console.warn("Saved Google session could not be restored:", error);
+    }
+  }
+  $("googleConnect").hidden = false;
+  if (spreadsheetId) {
+    $("connectionLabel").textContent = "Reconnect Google";
+    showStatus("Your expense sheet is remembered. Reconnect only when Google access needs renewal.");
+  } else {
+    $("connectionLabel").textContent = "Not connected";
+    showStatus("Connect Google once to create your personal expense sheet.");
+  }
+}
+
+restoreSameTabConnection();
+
+/* Penny: mobile installation */
+(() => {
+  const installCard = document.getElementById("installCard");
+  const installButton = document.getElementById("installPenny");
+  const iosNote = document.getElementById("iosInstallNote");
+  if (!installCard || !installButton || !iosNote) return;
+
+  let installPrompt = null;
+  const isStandalone = () =>
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
+  const isIOS = () =>
+    /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isSafari = () =>
+    /Safari/i.test(navigator.userAgent) &&
+    !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome/i.test(navigator.userAgent);
+
+  function updateInstallUI() {
+    if (isStandalone()) {
+      installCard.hidden = true;
+      iosNote.hidden = true;
+      return;
+    }
+    const iosSafari = isIOS() && isSafari();
+    installCard.hidden = iosSafari ? true : false;
+    iosNote.hidden = !iosSafari;
+  }
+
+  window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault();
+    installPrompt = event;
+    updateInstallUI();
+  });
+
+  installButton.addEventListener("click", async () => {
+    if (!installPrompt) {
+      alert('If available, use Chrome menu (⋮) → “Install Penny” or “Add to Home screen”.');
+      return;
+    }
+    installButton.disabled = true;
+    try {
+      await installPrompt.prompt();
+      await installPrompt.userChoice;
+      installPrompt = null;
+    } catch (error) {
+      console.error("Penny installation failed:", error);
+    } finally {
+      installButton.disabled = false;
+      updateInstallUI();
+    }
+  });
+
+  window.addEventListener("appinstalled", () => {
+    installPrompt = null;
+    installCard.hidden = true;
+    iosNote.hidden = true;
+  });
+
+  updateInstallUI();
+})();
